@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company News Sentiment Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .sentiment-positive {
+            color: #28a745;
+        }
+        .sentiment-negative {
+            color: #dc3545;
+        }
+        .sentiment-neutral {
+            color: #6c757d;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        .audio-player {
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .article-card {
+            transition: transform 0.2s;
+        }
+        .article-card:hover {
+            transform: translateY(-5px);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 2rem;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 1rem;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .topic-badge {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            margin: 0.25rem;
+            display: inline-block;
+            font-size: 0.875rem;
+        }
+        .summary-text {
+            color: #6c757d;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .source-badge {
+            background-color: #f8f9fa;
+            color: #495057;
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            margin: 0.25rem;
+            display: inline-block;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Company News Sentiment Analyzer</h1>
+        
+        <div class="card">
+            <div class="card-body">
+                <form id="analyzeForm" class="mb-4">
+                    <div class="input-group">
+                        <input type="text" id="companyName" class="form-control" placeholder="Enter company name" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Analyze
+                        </button>
+                    </div>
+                </form>
+
+                <div id="loading" class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing news articles...</p>
+                </div>
+
+                <div id="results" style="display: none;">
+                    <h3 class="mb-4">Analysis Results for <span id="companyNameDisplay">Company Name</span></h3>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="stats-card">
+                                <div class="stats-number" id="avgSentiment">0.00</div>
+                                <div class="stats-label">Average Sentiment Score</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stats-card">
+                                <div class="stats-number" id="positiveCount">0</div>
+                                <div class="stats-label">Positive Articles</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stats-card">
+                                <div class="stats-number" id="negativeCount">0</div>
+                                <div class="stats-label">Negative Articles</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h4>Sentiment Distribution</h4>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 0%" 
+                                            aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                            0% Positive
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 0%" 
+                                            aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                            0% Neutral
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-danger" role="progressbar" style="width: 0%" 
+                                            aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                            0% Negative
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h4>Top Topics</h4>
+                            <div id="topTopics" class="mb-3"></div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h4>Hindi Summary</h4>
+                            <p id="hindiSummary" class="mb-3"></p>
+                            <audio id="audioPlayer" class="audio-player" controls>
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <h4>Detailed Analysis</h4>
+                            <div id="articles-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sentimentChart = null;
+
+        document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const companyName = document.getElementById('companyName').value;
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `company_name=${encodeURIComponent(companyName)}`
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data);
+                } else {
+                    const errorMessage = data.error || 'An unknown error occurred';
+                    showError(errorMessage);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error or server is not responding. Please try again.');
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        function showError(message) {
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading">Error</h4>
+                    <p>${message}</p>
+                    <hr>
+                    <p class="mb-0">Please try again or try with a different company name.</p>
+                </div>
+            `;
+            results.style.display = 'block';
+        }
+
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            
+            // Create HTML for results
+            let html = `
+                <h3 class="mb-4">Analysis Results for ${data.company_name}</h3>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="stats-card">
+                            <div class="stats-number" id="avgSentiment">${data.comparative_analysis.average_sentiment.toFixed(2)}</div>
+                            <div class="stats-label">Average Sentiment Score</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stats-card">
+                            <div class="stats-number" id="positiveCount">${data.comparative_analysis.positive_count}</div>
+                            <div class="stats-label">Positive Articles</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stats-card">
+                            <div class="stats-number" id="negativeCount">${data.comparative_analysis.negative_count}</div>
+                            <div class="stats-label">Negative Articles</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h4>Sentiment Distribution</h4>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: ${(data.comparative_analysis.sentiment_distribution.positive * 100).toFixed(1)}%" 
+                                        aria-valuenow="${(data.comparative_analysis.sentiment_distribution.positive * 100).toFixed(1)}" aria-valuemin="0" aria-valuemax="100">
+                                        ${(data.comparative_analysis.sentiment_distribution.positive * 100).toFixed(1)}% Positive
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="progress">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width: ${(data.comparative_analysis.sentiment_distribution.neutral * 100).toFixed(1)}%" 
+                                        aria-valuenow="${(data.comparative_analysis.sentiment_distribution.neutral * 100).toFixed(1)}" aria-valuemin="0" aria-valuemax="100">
+                                        ${(data.comparative_analysis.sentiment_distribution.neutral * 100).toFixed(1)}% Neutral
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="progress">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: ${(data.comparative_analysis.sentiment_distribution.negative * 100).toFixed(1)}%" 
+                                        aria-valuenow="${(data.comparative_analysis.sentiment_distribution.negative * 100).toFixed(1)}" aria-valuemin="0" aria-valuemax="100">
+                                        ${(data.comparative_analysis.sentiment_distribution.negative * 100).toFixed(1)}% Negative
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h4>Top Topics</h4>
+                        <div id="topTopics" class="mb-3">
+            `;
+            
+            // Add topics
+            Object.entries(data.comparative_analysis.top_topics).forEach(([topic, count]) => {
+                const topicSentiment = data.comparative_analysis.topic_sentiment[topic] || 0;
+                let sentimentClass = 'bg-warning';
+                if (topicSentiment > 0.2) sentimentClass = 'bg-success';
+                if (topicSentiment < -0.2) sentimentClass = 'bg-danger';
+                
+                html += `
+                    <span class="topic-badge ${sentimentClass}">
+                        ${topic} (${count})
+                    </span>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h4>Hindi Summary</h4>
+                        <p id="hindiSummary" class="mb-3" style="white-space: pre-line;">${data.hindi_summary}</p>
+                        <audio id="audioPlayer" class="audio-player" controls>
+                            <source src="${data.audio_url}" type="audio/mp3">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h4>Detailed Analysis</h4>
+                        <div id="articles-container">
+            `;
+            
+            // Add articles
+            data.articles.forEach(article => {
+                let sentimentClass = 'neutral';
+                if (article.sentiment_score > 0.2) sentimentClass = 'positive';
+                if (article.sentiment_score < -0.2) sentimentClass = 'negative';
+                
+                html += `
+                    <div class="card article-card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">${article.title}</h5>
+                            <p class="card-text summary-text">
+                                <strong>Summary:</strong> ${article.summary}
+                            </p>
+                            <p class="card-text">
+                                <strong>Sentiment:</strong> 
+                                <span class="sentiment-${sentimentClass}">
+                                    ${article.sentiment_category}
+                                </span>
+                                (${article.sentiment_score.toFixed(2)})
+                            </p>
+                            <p class="card-text">
+                                <strong>Topics:</strong>
+                                ${article.topics.map(topic => `
+                                    <span class="topic-badge">${topic}</span>
+                                `).join('')}
+                            </p>
+                            <a href="${article.url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                Read Article
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            results.innerHTML = html;
+            results.style.display = 'block';
+        }
+
+        function updateSentimentChart(distribution) {
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            
+            if (sentimentChart) {
+                sentimentChart.destroy();
+            }
+            
+            sentimentChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Positive', 'Negative', 'Neutral'],
+                    datasets: [{
+                        data: [
+                            distribution.positive * 100,
+                            distribution.negative * 100,
+                            distribution.neutral * 100
+                        ],
+                        backgroundColor: [
+                            '#28a745',
+                            '#dc3545',
+                            '#6c757d'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function getSentimentClass(sentiment) {
+            if (sentiment > 0.2) return 'positive';
+            if (sentiment < -0.2) return 'negative';
+            return 'neutral';
+        }
+
+        function getSentimentText(sentiment) {
+            if (sentiment > 0.2) return 'Positive';
+            if (sentiment < -0.2) return 'Negative';
+            return 'Neutral';
+        }
+    </script>
+</body>
+</html> 
