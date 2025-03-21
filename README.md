@@ -143,6 +143,6 @@ git push
 
 
 
-![ss-1](Outout_1.png)
+![ss-1](Output_1.png)
 
 ![ss-2](Json_output.png)
