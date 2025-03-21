@@ -140,3 +140,8 @@ git push
 - Audio files are generated temporarily and served through the application
 - The interface includes interactive charts and statistics
 - All communication between frontend and backend happens via REST APIs 
+
+
+
+
+Screenshot (71).png
